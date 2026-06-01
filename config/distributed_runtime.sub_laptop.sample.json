@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+  "node_id": "sub-laptop",
+  "node_role": "pc",
+  "node_priority": 100,
+  "lease_name": "global_scheduler_primary",
+  "lease_ttl_seconds": 45,
+  "heartbeat_interval_seconds": 10,
+  "retention_days": 7,
+  "control_plane": {
+    "provider": "cloudflare_d1",
+    "account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID",
+    "database_id": "YOUR_D1_DATABASE_ID",
+    "api_token": "CLOUDFLARE_D1_API_TOKEN",
+    "timeout_seconds": 8
+  },
+  "paths": {
+    "cloud_copy_root": "D:/path/to/hs-scheduler/cloud_copies",
+    "cloud_copy_manifest": "D:/path/to/hs-scheduler/cloud_copies/manifest.json",
+    "artifact_spool_root": "D:/path/to/hs-scheduler/cloud_spool",
+    "archive_db_path": "D:/path/to/hs-scheduler/archive/control_plane_archive.db"
+  },
+  "artifact_capture_enabled": false,
+  "pc_fallback": {
+    "enabled": true,
+    "run_originals": true
+  }
+}

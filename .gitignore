@@ -1,0 +1,60 @@
+# Runtime data
+scheduler_data.json
+scheduler_data*.bak
+scheduler_data.backup_*.json
+scheduler_history.json
+scheduler_session_state.json
+scheduler_session_state.json.bak
+execution_stats.json
+find_line.txt
+
+# Secrets and local distributed runtime config
+scheduler_secrets.json
+config/distributed_runtime.json
+config/distributed_runtime.main_pc.json
+config/distributed_runtime.sub_laptop.json
+config/project_policies.json
+클플.txt
+
+# Engine databases and locks
+*.db
+*.db-shm
+*.db-wal
+*.lock
+*.pid
+archive/
+
+# Logs and generated task output
+logs/
+task_logs/
+cloud_copies/
+cloud_spool/
+
+# Internal planning docs with local paths
+docs/oracle_*.md
+docs/pc_failover_*.md
+docs/stage2_split_design.md
+debug_load.py
+
+# Local backups and captures
+백업/
+_*.png
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

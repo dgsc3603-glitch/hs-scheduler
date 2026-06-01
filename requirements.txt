@@ -1,0 +1,4 @@
+ttkbootstrap>=1.10
+tkinterdnd2>=0.4
+psutil>=5.9
+httpx>=0.27

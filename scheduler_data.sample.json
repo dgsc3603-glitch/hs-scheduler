@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "projects": [
+    {
+      "name": "Example Project",
+      "run_time": "09:00",
+      "schedule_type": "daily",
+      "schedule_value": "",
+      "step_mode": "sequential",
+      "enabled": true,
+      "tasks": [
+        {
+          "filename": "example_task.py",
+          "filepath": "C:/path/to/example_task.py",
+          "args": "",
+          "timeout": 0,
+          "retry_count": 0,
+          "step": 1,
+          "order": 0,
+          "checked": true
+        }
+      ]
+    }
+  ]
+}
