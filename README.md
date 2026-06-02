@@ -30,6 +30,12 @@ Or double-click:
 install_requirements.bat
 ```
 
+For first-time Windows setup and launch, double-click:
+
+```text
+setup_and_run.bat
+```
+
 ## Quick Start
 
 1. Copy the sample scheduler data:

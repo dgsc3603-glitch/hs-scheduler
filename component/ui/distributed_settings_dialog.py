@@ -67,7 +67,7 @@ class DistributedSettingsDialog:
 
         subtitle = tk.Label(
             header,
-            text="Main and Sub PCs share the same D1 control plane. Only the lease owner runs scheduled jobs.",
+            text="Main and Sub PCs share the same D1 control plane. The active Main/Sub owner runs scheduled jobs.",
             bg=COLORS["bg_header"],
             fg=COLORS["text_muted"],
             font=(FONT, 10),
@@ -233,14 +233,14 @@ class DistributedSettingsDialog:
             return
 
         enabled = "ON" if status.get("enabled") else "OFF"
-        mode = "Lease owner" if status.get("is_primary") else "Standby"
+        mode = "Main active" if status.get("is_primary") else "Sub standby"
         if not status.get("enabled"):
             mode = "LOCAL"
         summary = f"Distributed mode {enabled} / current state {mode}"
         detail = (
             f"node_id={status.get('node_id', '-')}, "
             f"priority={status.get('node_priority', '-')}, "
-            f"lease_owner={status.get('lease_owner', '-')}, "
+            f"active_node={status.get('lease_owner', '-')}, "
             f"d1={'OK' if status.get('control_plane_enabled') else 'OFF'}"
         )
         self.status_summary_var.set(summary)

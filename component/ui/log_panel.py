@@ -18,7 +18,7 @@ class LogPanel:
         self.app = scheduler_app
 
         self.frame = panel(parent)
-        panel_header(self.frame, "Execution Logs")
+        panel_header(self.frame, "Execution Logs", "Filter live output or load the latest saved project log.")
         self.notebook = ttk.Notebook(self.frame, style="Custom.TNotebook")
         self.notebook.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
@@ -32,7 +32,7 @@ class LogPanel:
 
     def _setup_summary_tab(self):
         self.summary_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.summary_tab, text="Summary")
+        self.notebook.add(self.summary_tab, text="Live Summary")
 
         ctrl_frame = self._filter_bar(self.summary_tab)
         self.log_proj_var = tk.StringVar(value=ALL_PROJECTS)
@@ -43,15 +43,15 @@ class LogPanel:
         self.log_regex_var = tk.BooleanVar(value=False)
         self._regex_toggle(ctrl_frame, self.log_regex_var, self._render_summary)
         action_button(ctrl_frame, "Clear", self.clear_summary, "secondary", side="right", width=7)
-        action_button(ctrl_frame, "Open Log", self.open_current_log, "secondary", side="right", width=9)
         action_button(ctrl_frame, "Export", self.export_summary, "secondary", side="right", width=9)
 
         self.summary_status = self._status_line(self.summary_tab)
+        self.summary_hint = self._hint_line(self.summary_tab, "Project and keyword filters apply to the live summary shown below.")
         self.log_text = self._log_text(self.summary_tab, height=15)
 
     def _setup_detail_tab(self):
         self.detail_tab = ttk.Frame(self.notebook)
-        self.notebook.add(self.detail_tab, text="Details")
+        self.notebook.add(self.detail_tab, text="Project Details")
 
         ctrl_frame = self._filter_bar(self.detail_tab)
         self.detail_proj_var = tk.StringVar(value=ALL_PROJECTS)
@@ -76,9 +76,14 @@ class LogPanel:
             bd=0,
         ).pack(side="right", padx=5)
         action_button(ctrl_frame, "Clear", self.clear_detail, "secondary", side="right", width=7)
+        action_button(ctrl_frame, "Open File", self.open_current_log, "secondary", side="right", width=9)
         action_button(ctrl_frame, "Export", self.export_detail, "secondary", side="right", width=9)
 
         self.detail_status = self._status_line(self.detail_tab)
+        self.detail_hint = self._hint_line(
+            self.detail_tab,
+            "Choose a project to load its latest saved task log. Keyword and Regex filter the loaded content.",
+        )
         self.detail_text = self._log_text(self.detail_tab, height=15)
 
     def _filter_bar(self, parent):
@@ -118,6 +123,11 @@ class LogPanel:
     def _status_line(self, parent):
         label = tk.Label(parent, text="", bg=COLORS["surface"], fg=COLORS["text_muted"], font=(FONT, 8))
         label.pack(fill="x", anchor="w", pady=(0, 4))
+        return label
+
+    def _hint_line(self, parent, text):
+        label = tk.Label(parent, text=text, bg=COLORS["surface"], fg=COLORS["text_muted"], font=(FONT, 8))
+        label.pack(fill="x", anchor="w", pady=(0, 5))
         return label
 
     def _log_text(self, parent, height):
@@ -244,6 +254,7 @@ class LogPanel:
     def clear_detail(self):
         self._detail_lines.clear()
         self._loaded_detail_project = None
+        self._current_log_file = None
         self._render_detail()
 
     def on_detail_project_selected(self, event=None):
@@ -255,12 +266,14 @@ class LogPanel:
         project_name = self.detail_proj_var.get()
         if not project_name or project_name == ALL_PROJECTS:
             self._loaded_detail_project = None
+            self._current_log_file = None
             return False
 
         log_file = self._find_latest_task_log(project_name)
         if not log_file:
             self._loaded_detail_project = None
-            self._detail_lines = []
+            self._current_log_file = None
+            self._detail_lines = [(f"No saved task log found for {project_name}. Run the project first.", project_name, "info")]
             self._render_detail()
             return True
 
@@ -274,8 +287,9 @@ class LogPanel:
 
         self._current_log_file = log_file
         self._loaded_detail_project = project_name
+        display_path = os.path.relpath(log_file, getattr(self.app, "base_dir", os.getcwd()))
         self._detail_lines = [
-            (f"[Latest detail log] {log_file}", project_name, "task_header"),
+            (f"[Loaded latest saved log] {display_path}", project_name, "task_header"),
             ("", project_name, "stdout"),
         ]
         self._detail_lines.extend((line, project_name, "stdout") for line in self._split_lines(content))
