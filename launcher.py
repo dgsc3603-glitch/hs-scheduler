@@ -82,7 +82,7 @@ def main():
     sys.excepthook = _excepthook
 
     try:
-        from component.작업스케쥴러 import AntigravityApp
+        from component.app import HSSchedulerApp
     except Exception as exc:
         logger.exception("Application import failed")
         show_startup_error(
@@ -94,7 +94,7 @@ def main():
     root = None
     try:
         root = create_root_window()
-        AntigravityApp(root, base_dir=ROOT_DIR)
+        HSSchedulerApp(root, base_dir=ROOT_DIR)
         root.mainloop()
         return 0
     except Exception as exc:

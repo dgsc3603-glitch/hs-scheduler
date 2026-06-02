@@ -24,6 +24,12 @@ Install Python dependencies:
 pip install -r requirements.txt
 ```
 
+Or double-click:
+
+```text
+install_requirements.bat
+```
+
 ## Quick Start
 
 1. Copy the sample scheduler data:
@@ -48,6 +54,18 @@ For a GUI-only launch without a console window:
 
 ```powershell
 pythonw .\hs_scheduler.py
+```
+
+On Windows, you can also double-click:
+
+```text
+start_hs_scheduler.bat
+```
+
+For troubleshooting with console output:
+
+```text
+start_hs_scheduler_console.bat
 ```
 
 ## Configuration

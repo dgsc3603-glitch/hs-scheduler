@@ -7,8 +7,8 @@ from types import SimpleNamespace
 from component.ui.log_panel import LogPanel
 from component.ui.project_panel import ProjectPanel
 from component.ui.task_panel import TaskPanel
-from component import 작업스케쥴러 as app_module
-from component.작업스케쥴러 import AntigravityApp
+import component.app as app_module
+from component.app import HSSchedulerApp
 
 
 class DummyPanelApp:
@@ -159,7 +159,7 @@ def latest_detail_log_checks(root):
 
 
 def engine_button_failure_checks():
-    app = AntigravityApp.__new__(AntigravityApp)
+    app = HSSchedulerApp.__new__(HSSchedulerApp)
     warnings = []
     project = SimpleNamespace(name="demo", enabled=True, calculate_next_run=lambda: None, stop_requested=False, tasks=[SimpleNamespace(task_id="task-1", filename="task.py")])
 
@@ -180,12 +180,12 @@ def engine_button_failure_checks():
     app_module.messagebox.showwarning = lambda title, message: warnings.append(message)
 
     try:
-        AntigravityApp.run_project_now(app)
-        AntigravityApp.stop_project(app)
-        AntigravityApp.run_checked_tasks(app)
-        AntigravityApp.stop_selected_task(app)
-        AntigravityApp.toggle_project_enabled(app)
-        AntigravityApp._run_single_task_only(app, project, project.tasks[0])
+        HSSchedulerApp.run_project_now(app)
+        HSSchedulerApp.stop_project(app)
+        HSSchedulerApp.run_checked_tasks(app)
+        HSSchedulerApp.stop_selected_task(app)
+        HSSchedulerApp.toggle_project_enabled(app)
+        HSSchedulerApp._run_single_task_only(app, project, project.tasks[0])
     finally:
         app_module.messagebox.showwarning = original_showwarning
 
@@ -201,7 +201,7 @@ def engine_button_failure_checks():
 
 
 def engine_runtime_snapshot_refresh_check():
-    app = AntigravityApp.__new__(AntigravityApp)
+    app = HSSchedulerApp.__new__(HSSchedulerApp)
     task = SimpleNamespace(task_id="task-1", status="오류")
     project = SimpleNamespace(
         name="demo",
@@ -246,7 +246,7 @@ def engine_runtime_snapshot_refresh_check():
     app._refresh_engine_projects = refresh_projects
     app._refresh_engine_tasks = refresh_tasks
 
-    AntigravityApp._refresh_core_runtime_from_engine(app)
+    HSSchedulerApp._refresh_core_runtime_from_engine(app)
 
     assert project.status == "완료"
     assert project.completed_tasks == 1

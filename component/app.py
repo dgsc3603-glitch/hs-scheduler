@@ -1,4 +1,4 @@
-﻿import tkinter as tk
+import tkinter as tk
 from tkinter import messagebox, filedialog, simpledialog
 import ttkbootstrap as ttk
 import queue
@@ -24,7 +24,7 @@ from component.utils import (
 
 
 
-class AntigravityApp:
+class HSSchedulerApp:
     def __init__(self, root, base_dir=None):
         self.root = root
         self.event_queue = queue.Queue(maxsize=5000)  # C-2: 메모리 폭증 방지
@@ -1131,7 +1131,7 @@ if __name__ == "__main__":
     import ttkbootstrap as ttk
     root = ttk.Window(title="HS Scheduler", themename="superhero")
     root.geometry("1400x950")
-    app = AntigravityApp(root)
+    app = HSSchedulerApp(root)
     root.mainloop()
 
 
