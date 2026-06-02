@@ -55,19 +55,19 @@ class SchedulerCore:
         self.project_workers = {}
         self.project_workers_lock = threading.Lock()
         
-        # ?숈떆 ?ㅽ뻾 ?쒗븳 ?댁젣 (?ъ슜?먭? ?쒓컙?蹂꾨줈 議곗젙)
+        # The app intentionally allows many concurrent projects; users control timing through schedules.
         self.max_concurrent_projects = 999
         self.semaphore = threading.Semaphore(self.max_concurrent_projects)
         self.pending_queue = queue.Queue()
         self._last_schedule_diag = {}
-        self._pending_set = set()  # 以묐났 吏꾩엯 諛⑹???
+        self._pending_set = set()  # Prevent duplicate pending entries.
         
         self._progress_pattern = re.compile(r'(?:[\(\s])?(\d+)/(\d+)(?:[\)\s]|$)')
         self._progress_percent_pattern = re.compile(r'(?<!\d)(\d{1,3})\s*%')
         
-        # C-2: detail_log ?ㅻ줈?留?(硫붾え由??꾩닔 諛⑹?)
+        # Throttle UI detail-log events to avoid unbounded memory growth.
         self._last_detail_log_time = 0
-        self._detail_log_interval = 0.05  # 50ms 媛꾧꺽 ?쒗븳
+        self._detail_log_interval = 0.05  # 50 ms minimum interval.
         self._last_live_log_state = {}
         
         # Status constants (mirrored from main app for consistency)
@@ -87,7 +87,7 @@ class SchedulerCore:
         self.TASK_STATUS_FINAL_FAIL = "최종실패"
         self.TASK_STATUS_SYSTEM_ERROR = "시스템오류"
         
-        # Fix 6: ?곹깭 ?먯젙?먯꽌 "?깃났 ?먮뒗 臾댁떆?대룄 ?섎뒗" ?곹깭 吏묓빀
+        # Statuses that should not be treated as failures during recovery.
         self._NON_FAILURE_STATUSES = {
             self.TASK_STATUS_COMPLETED,
             self.TASK_STATUS_WAITING,
@@ -103,7 +103,7 @@ class SchedulerCore:
         self.projects = []
         self.running = True
         self._current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-        # Fix 1: 遺??⑥쐞 蹂寃?媛먯?瑜??꾪븳 蹂??(second==0 ?섏〈 ?쒓굅)
+        # Track minute changes without relying on second==0 timing.
         self._last_checked_minute = ""
         self.last_all_done_date = None
         self._event_drop_counts = {}
@@ -258,7 +258,7 @@ class SchedulerCore:
                         proj.status = loaded_status
                         proj.completed_tasks = ps.get("completed_tasks", 0)
                         proj.total_tasks = ps.get("total_tasks", 0)
-                        # Fix 7: ?뚮퉬???곗폆 ?뺣낫 蹂듭썝 (?ъ떆????以묐났?ㅽ뻾 諛⑹?)
+                        # Restore consumed ticket state to prevent duplicate reruns after restart.
                         if saved_ticket:
                             proj.last_consumed_ticket = saved_ticket
                         
@@ -266,7 +266,7 @@ class SchedulerCore:
                         for task in proj.tasks:
                             if task.filename in tasks_state:
                                 ts = tasks_state[task.filename]
-                                task.status = ts.get("status", "???")
+                                task.status = ts.get("status", "Unknown")
 
             self.log(f"오늘 날짜 ({today}) 세션 상태 복원 완료")
         except Exception as e:
@@ -395,7 +395,7 @@ class SchedulerCore:
                      "completed_tasks": proj.completed_tasks,
                      "total_tasks": proj.total_tasks,
                      "tasks": tasks_snapshot,
-                     # Fix 7: ?뚮퉬???곗폆 ?뺣낫 ???(?ъ떆????以묐났?ㅽ뻾 諛⑹?)
+                     # Persist consumed ticket state to prevent duplicate reruns after restart.
                      "last_consumed_ticket": proj.last_consumed_ticket,
                  })
             
@@ -412,13 +412,13 @@ class SchedulerCore:
             try:
                 now = datetime.datetime.now()
                 
-                # ?먯젙 珥덇린??泥댄겕 - ?좎쭨媛 諛붾뚮㈃ ?곹깭 由ъ뀑
+                # Reset daily state when the date changes.
                 current_date = now.strftime("%Y-%m-%d")
                 if current_date != self._current_date:
                     self._current_date = current_date
                     self._reset_daily_state()
                 
-                # Fix 1: second==0 ???"遺꾩씠 諛붾뚯뿀?붿?" 媛먯?
+                # Process scheduling once per minute.
                 current_minute = now.strftime("%Y-%m-%d %H:%M")
                 if current_minute != self._last_checked_minute:
                     self._last_checked_minute = current_minute
@@ -433,17 +433,17 @@ class SchedulerCore:
                         pending_queue=self.pending_queue.qsize()
                     )
                     
-                    # C-7: Self-Healing - ?좊졊 ?ㅽ뻾以??꾨줈?앺듃 ?먮룞 蹂듦뎄
+                    # Recover projects left in a stale running state.
                     self._heal_ghost_running_projects()
                     
                     for proj in self.projects:
                         if proj.enabled:
                             self._diagnose_scheduled_project(proj, now)
-                        # ?ㅽ뻾 媛?ν븳 ?곹깭?몄? ?뺤씤 (?ㅽ뻾以??꾨즺/?ㅻ쪟/以묒? ?쒖쇅)
+                        # Only waiting projects are eligible for scheduled execution.
                         if proj.enabled and proj.status == self.STATUS_WAITING:
                             self.try_consume_ticket_atomic(proj, now)
                 
-                # Fix 4: pending_queue 留?珥??대쭅
+                # Drain pending work when capacity is available.
                 if not self.pending_queue.empty():
                     self._process_pending()
                 
@@ -665,7 +665,7 @@ class SchedulerCore:
             self._log_schedule_diag_once(
                 proj,
                 diag_key,
-                f"?㈉ [{proj.name}] ?먮룞 ?덉빟 蹂대쪟 - status={proj.status}, next_run={proj.next_run}, "
+                f"[{proj.name}] Scheduled run blocked by status - status={proj.status}, next_run={proj.next_run}, "
                 f"last_run={proj.last_run}, last_ticket={proj.last_consumed_ticket}"
             )
             return
@@ -675,26 +675,26 @@ class SchedulerCore:
             return
 
         reason_map = {
-            "invalid_next_run": "next_run ?뚯떛 ?ㅽ뙣",
-            "missed_grace_window": "?덉젙 ?쒓컖??5遺??댁긽 吏???먮룞 ?ㅽ뻾 ?좎삁 李쎌쓣 ?볦묠",
-            "stale_past_schedule": "吏???좎쭨??stale ?덉빟 媛믪씠 ?⑥븘 ?덉쓬",
+            "invalid_next_run": "next_run parse failed",
+            "missed_grace_window": "scheduled time is more than five minutes late",
+            "stale_past_schedule": "stale past schedule remains",
         }
         diag_key = ("ticket_block", proj.next_run, block_reason, proj.last_consumed_ticket)
         self._log_schedule_diag_once(
             proj,
             diag_key,
-            f"?㈉ [{proj.name}] ?먮룞 ?덉빟 誘몄떎??- {reason_map.get(block_reason, block_reason)} "
+            f"[{proj.name}] Scheduled run skipped - {reason_map.get(block_reason, block_reason)} "
             f"(next_run={proj.next_run}, last_ticket={proj.last_consumed_ticket})"
         )
 
     def _launch_project_with_acquired_slot(self, proj, only_checked, trigger_source):
         self._pending_set.discard(proj.name)
 
-        source_label = "?먮룞 ?덉빟" if trigger_source == "scheduled" else "?섎룞 ?ㅽ뻾"
+        source_label = "scheduled run" if trigger_source == "scheduled" else "manual run"
         if trigger_source == "scheduled":
-            self.log(f"[{proj.name}] {source_label} 시작 (ticket: {proj.last_consumed_ticket}, next_run: {proj.next_run})")
+            self.log(f"[{proj.name}] {source_label} started (ticket: {proj.last_consumed_ticket}, next_run: {proj.next_run})")
         else:
-            self.log(f"[{proj.name}] {source_label} 시작")
+            self.log(f"[{proj.name}] {source_label} started")
 
         self._trace_schedule_event(
             proj.name,
@@ -716,13 +716,13 @@ class SchedulerCore:
         return True
 
     def detail_log(self, message, proj_name="", task_name="", log_type="stdout"):
-        # C-2: ?ㅻ줈?留?- 怨쇰룄??UI ?대깽???꾩넚 諛⑹? (硫붾え由??꾩닔 諛⑹?)
+        # Throttle high-volume stdout/stderr events before sending them to the UI.
         now = time.time()
         if log_type in ("stdout", "stderr") and (now - self._last_detail_log_time) < self._detail_log_interval:
-            return  # ?뚯씪?먮뒗 ?대? 湲곕줉?? UI ?먮쭔 ?ㅽ궢
+            return  # File logging already captured the output; skip only this UI event.
         self._last_detail_log_time = now
         
-        # ?먭? 怨쇰룄?섍쾶 ?볦씠硫?UI ?대깽???먭린
+        # Drop UI events when the queue is full.
         try:
             self.event_queue.put_nowait(SchedulerEvent(SchedulerEvent.LOG_DETAIL, {
                 "message": message,
@@ -731,7 +731,7 @@ class SchedulerCore:
                 "log_type": log_type
             }))
         except queue.Full:
-            pass  # 큐가 가득 찬 경우 UI 전송 생략
+            pass
 
     def run_project(self, proj, only_checked=False, trigger_source="scheduled"):
         if not proj.execution_lock.acquire(blocking=False):
@@ -769,11 +769,11 @@ class SchedulerCore:
             self._execute_project_logic(proj, only_checked, trigger_source)
         finally:
             self._track_project_worker_finish(proj.name, run_id)
-            # C-5: ?덉쟾??Lock ?댁젣 (RuntimeError 諛⑹뼱)
+            # Release defensively; recovery code may already have released the lock.
             try:
                 proj.execution_lock.release()
             except RuntimeError:
-                pass  # ?대? ?댁젣??寃쎌슦 臾댁떆
+                pass
             self.semaphore.release()
             self._process_pending()
             self._check_all_projects_completed()
@@ -994,8 +994,7 @@ class SchedulerCore:
                     with self.active_processes_lock:
                         self.active_processes.append((process, proj_name, task.task_id))
                     
-                    # C-1: full_stdout/full_stderr 硫붾え由?由ъ뒪???꾩쟾 ?쒓굅
-                    # ???뚯씪?먮쭔 湲곕줉?섍퀬, 理쒖쥌 濡쒓렇???뚯씪?믫뙆??蹂듭궗濡?泥섎━
+                    # Stream logs through temporary files instead of keeping full stdout/stderr in memory.
                     
                     t_out_read = open(temp_stdout, 'r', encoding='utf-8', errors='replace')
                     t_err_read = open(temp_stderr, 'r', encoding='utf-8', errors='replace')
@@ -1190,7 +1189,7 @@ class SchedulerCore:
             self.emit(SchedulerEvent.PROJECT_REFRESH, None)
             self.emit(SchedulerEvent.NOTIFICATION, f"프로젝트 '{proj.name}' 종료")
             
-            # ?꾨줈?앺듃 ?꾨즺 ???붾젅洹몃옩 ?뚮┝
+            # Send project completion notification.
             status_icon = "✅" if proj.status == self.STATUS_COMPLETED else "❌" if proj.status == self.STATUS_ERROR else "⚠️"
             tg_msg = f"{status_icon} [{proj.name}] {proj.status}\n아래 {proj.last_run}"
             self.emit(SchedulerEvent.TELEGRAM, tg_msg)
@@ -1337,9 +1336,8 @@ class SchedulerCore:
         self.log(f"[{proj.name}] 수동 실행 시작 (수동 요청)")
         return True
     
-    # Fix 3: 以묐났 stop_project ?쒓굅 (L334??泥?踰덉㎏ ?뺤쓽留??좎?)
-    # ?댁쟾???ш린????踰덉㎏ stop_project媛 ?덉뿀?쇰굹, entry瑜?tuple濡??ㅻ（吏 ?딆븘
-    # ?꾨줈?몄뒪 醫낅즺媛 ?ㅽ뙣?섎뒗 踰꾧렇媛 ?덉뿀?? ??젣?섏뿬 L334 踰꾩쟾留??ъ슜.
+    # The old duplicate stop_project implementation was removed because it did not
+    # track active process tuples correctly.
 
     # Project CRUD wrappers
     def add_project(self, name):
@@ -1405,8 +1403,7 @@ class SchedulerCore:
 
     def _check_all_projects_completed(self):
         """
-        紐⑤뱺 '?쒖꽦?붾맂(Enabled)' ?꾨줈?앺듃媛 ?ㅻ뒛 ?ㅽ뻾??留덉낀怨?
-        ?꾩옱 ?ㅽ뻾 以묒씤 ?꾨줈?앺듃媛 ?섎굹???놁쓣 ??'?꾩껜 ?꾨즺' ?뚮┝??蹂대깄?덈떎.
+        Send a daily notification after all enabled projects have finished and no project is running.
         """
         today_str = datetime.datetime.now().strftime("%Y-%m-%d")
         
@@ -1427,6 +1424,6 @@ class SchedulerCore:
         
         if all_done:
             self.last_all_done_date = today_str
-            msg = f"?럦 {today_str} ?꾩껜 ?꾨줈?몄뒪 ?꾨즺\n\n紐⑤뱺 ?쒖꽦?붾맂 ?꾨줈?앺듃???ㅽ뻾???꾨즺?섏뿀?듬땲??\n?닿렐?섏뀛??醫뗭뒿?덈떎! ?룧"
+            msg = f"All projects completed for {today_str}.\n\nEvery enabled project has finished running."
             self.emit(SchedulerEvent.TELEGRAM, msg)
             self.log("📣 전체 프로젝트 종료 알림 전송 완료")

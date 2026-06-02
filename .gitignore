@@ -24,6 +24,11 @@ config/project_policies.json
 *.pid
 archive/
 
+# Build artifacts
+build/
+dist/
+*.spec.bak
+
 # Logs and generated task output
 logs/
 task_logs/

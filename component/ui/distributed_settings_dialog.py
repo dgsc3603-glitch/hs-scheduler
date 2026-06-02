@@ -3,6 +3,7 @@ from tkinter import messagebox
 
 import ttkbootstrap as ttk
 
+from component.distributed.d1 import CloudflareD1Client
 from component.ui.theme import COLORS, FONT, action_button
 
 
@@ -92,6 +93,7 @@ class DistributedSettingsDialog:
         self._add_entry(d1_frame, "Account ID", self.account_id_var, 0)
         self._add_entry(d1_frame, "Database ID", self.database_id_var, 1)
         self._add_entry(d1_frame, "API Token", self.api_token_var, 2, show="*")
+        action_button(d1_frame, "Test D1 Connection", self._test_d1_connection, "secondary")
 
         path_frame = self._card(container, "Paths")
         self._add_entry(path_frame, "Cloud Copy Root", self.cloud_copy_root_var, 0)
@@ -307,6 +309,31 @@ class DistributedSettingsDialog:
             )
             return
         messagebox.showinfo("Distributed Settings", "Settings were saved and applied to the engine.")
+
+    def _test_d1_connection(self):
+        account_id = self.account_id_var.get().strip()
+        database_id = self.database_id_var.get().strip()
+        api_token = self.api_token_var.get().strip()
+        if not account_id or not database_id or not api_token:
+            messagebox.showwarning(
+                "Cloudflare D1",
+                "Account ID, Database ID, and API Token are required before testing.",
+            )
+            return
+
+        try:
+            client = CloudflareD1Client(
+                account_id=account_id,
+                database_id=database_id,
+                api_token=api_token,
+                timeout_seconds=8,
+            )
+            client.query("SELECT 1 AS ok")
+        except Exception as exc:
+            messagebox.showerror("Cloudflare D1", f"D1 connection failed.\n\n{exc}")
+            return
+
+        messagebox.showinfo("Cloudflare D1", "D1 connection succeeded.")
 
     def _close(self):
         if self.window and self.window.winfo_exists():

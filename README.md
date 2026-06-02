@@ -74,6 +74,14 @@ For troubleshooting with console output:
 start_hs_scheduler_console.bat
 ```
 
+To build a Windows release package:
+
+```text
+build_release.bat
+```
+
+See `docs/release-build.md` for release packaging notes.
+
 ## Configuration
 
 Runtime files are intentionally ignored by git:
