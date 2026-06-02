@@ -174,7 +174,7 @@ def test_stale_daily_session_status_does_not_block_today_schedule():
                 "enabled": True,
                 "step_mode": "parallel",
                 "tasks": [],
-                "status": "오류 발생",
+                "status": "Error",
                 "last_run": "2026-01-01 00:10",
                 "last_consumed_ticket": "2026-01-01 00:10",
             },
@@ -186,7 +186,7 @@ def test_stale_daily_session_status_does_not_block_today_schedule():
                 "enabled": True,
                 "step_mode": "parallel",
                 "tasks": [],
-                "status": "오류 발생",
+                "status": "Error",
                 "last_run": today_ticket,
                 "last_consumed_ticket": today_ticket,
             },
@@ -198,14 +198,14 @@ def test_stale_daily_session_status_does_not_block_today_schedule():
                 "date": today,
                 "projects": {
                     "stale-error": {
-                        "status": "오류 발생",
+                        "status": "Error",
                         "completed_tasks": 1,
                         "total_tasks": 2,
                         "tasks": {},
                         "last_consumed_ticket": "2026-01-01 00:10",
                     },
                     "today-error": {
-                        "status": "오류 발생",
+                        "status": "Error",
                         "completed_tasks": 1,
                         "total_tasks": 2,
                         "tasks": {},
@@ -263,7 +263,7 @@ def test_today_trace_finish_repairs_stale_project_status():
                         "step": 1,
                     }
                 ],
-                "status": "오류 발생",
+                "status": "Error",
                 "last_run": "2026-01-01 00:45",
                 "last_consumed_ticket": "2026-01-01 00:40",
                 "completed_tasks": 0,
@@ -277,7 +277,7 @@ def test_today_trace_finish_repairs_stale_project_status():
                 f"{today} 00:40:00 | trace-recovered | SCHEDULE_TICKET_CONSUMED | next_run={today} 00:40, execution_id=1\n"
             )
             handle.write(
-                f"{today} 00:45:00 | trace-recovered | PROJECT_FINISH | trigger_source=scheduled, status=완료, last_run={today} 00:45, next_run=2099-01-01 00:40\n"
+                f"{today} 00:45:00 | trace-recovered | PROJECT_FINISH | trigger_source=scheduled, status=Done, last_run={today} 00:45, next_run=2099-01-01 00:40\n"
             )
 
         core = SchedulerCore(queue.Queue(), CredentialManager(data_path), data_path)
@@ -301,7 +301,7 @@ def test_due_onetime_project_keeps_runnable_ticket_until_consumed():
     project.last_consumed_ticket = due_at
     project.calculate_next_run()
 
-    assert project.next_run == "기간만료"
+    assert project.next_run == "Expired"
 
 
 def test_failed_task_preserves_concrete_error_status_after_attempts():
@@ -446,7 +446,7 @@ def test_engine_store_projects_expose_ui_status_labels_for_live_runs():
                     "enabled": True,
                     "step_mode": "parallel",
                     "tasks": [],
-                    "status": "대기중",
+                    "status": "Waiting",
                 }
             ]
         )
@@ -455,7 +455,7 @@ def test_engine_store_projects_expose_ui_status_labels_for_live_runs():
 
         item = store.list_projects()[0]
 
-        assert item["status"] == "실행중"
+        assert item["status"] == "Running"
         assert item["engine_status"] == "running"
     finally:
         shutil.rmtree(base, ignore_errors=True)

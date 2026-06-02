@@ -14,7 +14,7 @@ config/distributed_runtime.json
 config/distributed_runtime.main_pc.json
 config/distributed_runtime.sub_laptop.json
 config/project_policies.json
-클플.txt
+cloudflare.txt
 
 # Engine databases and locks
 *.db
@@ -42,7 +42,7 @@ docs/stage2_split_design.md
 debug_load.py
 
 # Local backups and captures
-백업/
+backup/
 _*.png
 
 # Python

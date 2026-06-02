@@ -95,16 +95,16 @@ def panel_selection_checks():
         project_host = tk.Frame(root)
         project_panel = ProjectPanel(project_host, dummy)
         projects = [
-            SimpleNamespace(name="alpha", enabled=True, status="대기중", next_run="2026-03-21 09:00", completed_tasks=0, total_tasks=0),
-            SimpleNamespace(name="beta", enabled=True, status="실행중..", next_run="2026-03-21 10:00", completed_tasks=1, total_tasks=2),
+            SimpleNamespace(name="alpha", enabled=True, status="Waiting", next_run="2026-03-21 09:00", completed_tasks=0, total_tasks=0),
+            SimpleNamespace(name="beta", enabled=True, status="Running", next_run="2026-03-21 10:00", completed_tasks=1, total_tasks=2),
         ]
         project_panel.refresh(
             projects,
-            "대기중",
-            "실행중..",
-            "완료",
-            "오류 발생",
-            "대기(종속)",
+            "Waiting",
+            "Running",
+            "Done",
+            "Error",
+            "DependencyWait",
             selected_project_name="beta",
         )
         assert project_panel.get_selected_name() == "beta", "project selection should be restored after refresh"
@@ -113,17 +113,17 @@ def panel_selection_checks():
         task_panel = TaskPanel(task_host, dummy)
         steps = {
             1: [
-                SimpleNamespace(task_id="task-1", filename="first.py", args="", timeout=0, status="대기중", checked=False),
-                SimpleNamespace(task_id="task-2", filename="second.py", args="--flag", timeout=10, status="실행중..", checked=True),
+                SimpleNamespace(task_id="task-1", filename="first.py", args="", timeout=0, status="Waiting", checked=False),
+                SimpleNamespace(task_id="task-2", filename="second.py", args="--flag", timeout=10, status="Running", checked=True),
             ]
         }
         status_constants = {
-            "TASK_STATUS_COMPLETED": "완료",
-            "TASK_STATUS_ERROR": "오류",
-            "TASK_STATUS_RUNNING": "실행중",
-            "TASK_STATUS_TIMEOUT": "시간초과",
-            "TASK_STATUS_STOPPED": "중지됨",
-            "TASK_STATUS_FINAL_FAIL": "최종실패",
+            "TASK_STATUS_COMPLETED": "Done",
+            "TASK_STATUS_ERROR": "Error",
+            "TASK_STATUS_RUNNING": "Running",
+            "TASK_STATUS_TIMEOUT": "Timeout",
+            "TASK_STATUS_STOPPED": "Stopped",
+            "TASK_STATUS_FINAL_FAIL": "FinalFailed",
         }
         task_panel.refresh(steps, status_constants, selected_task_id="task-2")
         assert task_panel.get_selected_task_id() == "task-2", "task selection should be restored after refresh"
@@ -202,10 +202,10 @@ def engine_button_failure_checks():
 
 def engine_runtime_snapshot_refresh_check():
     app = HSSchedulerApp.__new__(HSSchedulerApp)
-    task = SimpleNamespace(task_id="task-1", status="오류")
+    task = SimpleNamespace(task_id="task-1", status="Error")
     project = SimpleNamespace(
         name="demo",
-        status="오류 발생",
+        status="Error",
         completed_tasks=0,
         total_tasks=1,
         last_run="2026-01-01 00:00",
@@ -226,7 +226,7 @@ def engine_runtime_snapshot_refresh_check():
         app.engine_projects_cache = [
             {
                 "project_name": "demo",
-                "status": "완료",
+                "status": "Done",
                 "completed_tasks": 1,
                 "total_tasks": 1,
                 "last_run_at": "2026-04-24 00:45",
@@ -239,7 +239,7 @@ def engine_runtime_snapshot_refresh_check():
         app.engine_tasks_cache[project_name] = [
             {
                 "task_id": "task-1",
-                "status": "완료",
+                "status": "Done",
             }
         ]
 
@@ -248,11 +248,11 @@ def engine_runtime_snapshot_refresh_check():
 
     HSSchedulerApp._refresh_core_runtime_from_engine(app)
 
-    assert project.status == "완료"
+    assert project.status == "Done"
     assert project.completed_tasks == 1
     assert project.last_run == "2026-04-24 00:45"
     assert project.last_consumed_ticket == "2026-04-24 00:40"
-    assert task.status == "완료"
+    assert task.status == "Done"
 
 
 def main():

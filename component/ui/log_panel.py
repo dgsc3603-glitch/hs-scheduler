@@ -238,7 +238,7 @@ class LogPanel:
 
     def _set_status(self, label, shown, total, project, search):
         scope = "All projects" if not project or project == ALL_PROJECTS else project
-        suffix = f" · keyword '{search}'" if search else ""
+        suffix = f"   keyword '{search}'" if search else ""
         label.config(text=f"Showing {shown}/{total} lines in {scope}{suffix}")
 
     def filter_logs(self):

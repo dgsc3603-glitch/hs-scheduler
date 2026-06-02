@@ -115,9 +115,9 @@ def send_telegram_alert(message, secrets, log_func=None):
     try:
         with urllib.request.urlopen(req) as response:
             if log_func:
-                log_func("🔔 텔레그램 알림 전송 완료")
+                log_func("             Done")
             return True
     except Exception as e:
         if log_func:
-            log_func(f"⚠️ 텔레그램 전송 실패: {e}")
+            log_func(f"           Failed: {e}")
         return False

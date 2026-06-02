@@ -7,16 +7,16 @@ from component.ui.theme import COLORS, action_button, panel, panel_header, secti
 
 
 STATUS_LABELS = {
-    "대기중": "Waiting",
-    "실행중": "Running",
-    "실행중..": "Running",
-    "완료": "Done",
-    "실행 완료": "Done",
-    "오류": "Error",
-    "오류 발생": "Error",
-    "대기(종속)": "Dependency Wait",
-    "사용자중지": "Stopped",
-    "일시중지": "Paused",
+    "Waiting": "Waiting",
+    "Running": "Running",
+    "Running": "Running",
+    "Done": "Done",
+    "Done": "Done",
+    "Error": "Error",
+    "Error": "Error",
+    "DependencyWait": "Dependency Wait",
+    "Stopped": "Stopped",
+    "Paused": "Paused",
 }
 
 
@@ -71,24 +71,24 @@ class ProjectPanel:
         self.tree.delete(*self.tree.get_children())
         selected_item = None
         for idx, proj in enumerate(projects):
-            status_icon = "○"
+            status_icon = " "
             tag = "even" if idx % 2 == 0 else "odd"
 
             if proj.status == STATUS_WAITING:
-                status_icon = "○"
+                status_icon = " "
             elif proj.status == STATUS_RUNNING:
-                status_icon = "●"
+                status_icon = " "
                 tag = "running"
             elif proj.status == STATUS_COMPLETED:
-                status_icon = "●"
+                status_icon = " "
                 tag = "completed"
-            elif proj.status == STATUS_ERROR or proj.status == "오류":
-                status_icon = "●"
+            elif proj.status == STATUS_ERROR or proj.status == "Error":
+                status_icon = " "
                 tag = "error"
             elif proj.status == STATUS_DEPENDENCY_WAIT:
-                status_icon = "…"
-            elif "사용자중지" in proj.status:
-                status_icon = "■"
+                status_icon = " "
+            elif "Stopped" in proj.status:
+                status_icon = " "
 
             if not proj.enabled and proj.status == STATUS_WAITING:
                 status_display = "Paused"

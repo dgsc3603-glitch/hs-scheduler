@@ -214,7 +214,7 @@ def _normalize_task(raw_task, path, seen_task_ids, diagnostics, default_order):
     task["max_retries"] = _coerce_non_negative_int(task.get("max_retries", 0), default=0, path=f"{path}.max_retries", diagnostics=diagnostics)
     task["args"] = _coerce_text(task.get("args", ""))
     task["checked"] = bool(task.get("checked", False))
-    task["status"] = _coerce_text(task.get("status", "대기")) or "대기"
+    task["status"] = _coerce_text(task.get("status", "Waiting")) or "Waiting"
     task["condition"] = _normalize_condition(task.get("condition", {}), f"{path}.condition", diagnostics)
     return task, True
 

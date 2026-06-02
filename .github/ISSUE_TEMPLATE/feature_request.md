@@ -8,7 +8,7 @@ assignees: ""
 
 ## Problem
 
-What workflow is hard or missing today?
+What workflow is hard or missing today
 
 ## Proposed solution
 

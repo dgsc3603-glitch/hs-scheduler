@@ -13,7 +13,7 @@ class ProjectTask:
         self.timeout = int(timeout)
         self.max_retries = int(max_retries)
         self.order = int(order)
-        self.status = "대기"
+        self.status = "Waiting"
         self.checked = False
         self.condition = {
             "enabled": False,
@@ -46,7 +46,7 @@ class Project:
         self.step_mode = step_mode
         
         self.tasks = []
-        self.status = kwargs.get("status", "대기중")
+        self.status = kwargs.get("status", "Waiting")
         self.last_run = kwargs.get("last_run", "-")
         self.next_run = "-"
         
@@ -89,7 +89,7 @@ class Project:
                     t_data.get("task_id")
                 )
                 task.checked = t_data.get("checked", False)
-                task.status = t_data.get("status", "대기")
+                task.status = t_data.get("status", "Waiting")
                 task.condition = t_data.get("condition", {"enabled": False, "type": "file_exists", "value": ""})
                 self.tasks.append(task)
             self.tasks.sort(key=lambda x: (x.step, x.order))
@@ -99,8 +99,8 @@ class Project:
         if self.last_run and self.last_run.startswith(today_str):
             pass # Keep saved status (could be Completed or Error)
         else:
-            self.status = "대기중"
-            for t in self.tasks: t.status = "대기"
+            self.status = "Waiting"
+            for t in self.tasks: t.status = "Waiting"
             
         self.calculate_next_run()
 
@@ -146,7 +146,7 @@ class Project:
     def calculate_next_run(self):
         now = datetime.datetime.now()
         if not self.enabled:
-            self.next_run = "일시중지"
+            self.next_run = "Paused"
             return
 
         try:
@@ -156,12 +156,12 @@ class Project:
                 today_ticket = today_run.strftime("%Y-%m-%d %H:%M")
 
                 if today_run <= now:
-                    # 오늘 예정 시간이 이미 지남 → 티켓 소비 여부로 판단
+                    #                               
                     if self.last_consumed_ticket == today_ticket:
-                        # 오늘 티켓 이미 소비됨 → 내일로 설정
+                        #                      
                         next_run = today_run + datetime.timedelta(days=1)
                     else:
-                        # 오늘 티켓 미소비 (재시작으로 놓쳤을 가능성) → 오늘로 유지
+                        #           (             )         
                         next_run = today_run
                 else:
                     next_run = today_run
@@ -170,7 +170,7 @@ class Project:
                 
             elif self.schedule_type == "weekly":
                 if not self.schedule_value: 
-                    self.next_run = "설정필요"
+                    self.next_run = "NeedsSetup"
                     return
                 
                 target_days = [d.strip()[:3].lower() for d in self.schedule_value.split(',')]
@@ -193,14 +193,14 @@ class Project:
                 if candidates:
                     self.next_run = min(candidates).strftime("%Y-%m-%d %H:%M")
                 else:
-                    self.next_run = "설정오류"
+                    self.next_run = "ConfigError"
 
             elif self.schedule_type == "interval":
                 if not self.schedule_value.isdigit():
-                    self.next_run = "설정오류"
+                    self.next_run = "ConfigError"
                     return
                 interval_min = int(self.schedule_value)
-                if self.last_run == "-" or self.last_run == "실패":
+                if self.last_run == "-" or self.last_run == "Failed":
                     self.next_run = now.strftime("%Y-%m-%d %H:%M")
                 else:
                     last_run_dt = datetime.datetime.strptime(self.last_run, "%Y-%m-%d %H:%M")
@@ -215,13 +215,13 @@ class Project:
                     target_dt = datetime.datetime.strptime(self.schedule_value, "%Y-%m-%d %H:%M")
                     target_ticket = target_dt.strftime("%Y-%m-%d %H:%M")
                     if target_dt <= now and self.last_consumed_ticket == target_ticket:
-                        self.next_run = "기간만료"
+                        self.next_run = "Expired"
                     else:
                         self.next_run = target_ticket
                 except:
-                    self.next_run = "형식오류"
+                    self.next_run = "FormatError"
             else:
                 self.next_run = "-"
         except Exception as e:
             print(f"Calc Next Run Error: {e}")
-            self.next_run = "오류"
+            self.next_run = "Error"

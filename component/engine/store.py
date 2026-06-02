@@ -13,14 +13,14 @@ MAX_STORED_EVENTS = 20000
 MAX_STORED_COMMANDS = 5000
 LIVE_RUN_STATUSES = ("starting", "running", "stopping", "finishing")
 UI_STATUS_BY_ENGINE_STATUS = {
-    "starting": "실행중",
-    "running": "실행중",
-    "stopping": "사용자중지",
-    "finishing": "실행중",
-    "completed": "완료",
-    "error": "오류 발생",
-    "failed": "오류 발생",
-    "stopped": "사용자중지",
+    "starting": "Running",
+    "running": "Running",
+    "stopping": "Stopped",
+    "finishing": "Running",
+    "completed": "Done",
+    "error": "Error",
+    "failed": "Error",
+    "stopped": "Stopped",
 }
 
 

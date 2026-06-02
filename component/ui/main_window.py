@@ -10,12 +10,12 @@ from component.ui.theme import COLORS, FONT, MONO_FONT, action_button, configure
 
 
 STATUS_LABELS = {
-    "시스템 대기중": "System idle",
-    "대기중": "Waiting",
-    "실행중": "Running",
-    "완료": "Done",
-    "오류": "Error",
-    "에러": "Error",
+    "System idle": "System idle",
+    "Waiting": "Waiting",
+    "Running": "Running",
+    "Done": "Done",
+    "Error": "Error",
+    "Error": "Error",
 }
 
 
@@ -107,7 +107,7 @@ class MainWindow:
 
         brand = tk.Frame(nav, bg=COLORS["bg_header"])
         brand.pack(side="left", fill="y")
-        tk.Label(brand, text="⚡", bg=COLORS["bg_header"], fg=COLORS["accent"], font=("Segoe UI", 17)).pack(side="left")
+        tk.Label(brand, text=" ", bg=COLORS["bg_header"], fg=COLORS["accent"], font=("Segoe UI", 17)).pack(side="left")
         brand_text = tk.Frame(brand, bg=COLORS["bg_header"])
         brand_text.pack(side="left", padx=(8, 0))
         tk.Label(brand_text, text="HS Scheduler", bg=COLORS["bg_header"], fg=COLORS["text"], font=(FONT, 14, "bold")).pack(anchor="w")
@@ -217,10 +217,10 @@ class MainWindow:
     def update_dashboard_counts(self):
         try:
             projects = self.app.get_projects_for_ui()
-            running = sum(1 for p in projects if str(p.status).startswith("실행중"))
-            waiting = sum(1 for p in projects if p.status == "대기중" and p.enabled)
-            completed = sum(1 for p in projects if p.status in ["완료", "실행 완료"])
-            error = sum(1 for p in projects if "오류" in str(p.status) or "에러" in str(p.status))
+            running = sum(1 for p in projects if str(p.status).startswith("Running"))
+            waiting = sum(1 for p in projects if p.status == "Waiting" and p.enabled)
+            completed = sum(1 for p in projects if p.status in ["Done", "Done"])
+            error = sum(1 for p in projects if "Error" in str(p.status) or "Error" in str(p.status))
             self.dash_cards["running"].config(text=str(running))
             self.dash_cards["waiting"].config(text=str(waiting))
             self.dash_cards["completed"].config(text=str(completed))
@@ -275,8 +275,8 @@ class MainWindow:
             self.log_panel.clear_detail()
 
     def update_status(self, text, bootstyle=None):
-        color = COLORS["success"] if "대기" in text else COLORS["accent"]
-        if "오류" in text or "에러" in text:
+        color = COLORS["success"] if "Waiting" in text else COLORS["accent"]
+        if "Error" in text or "Error" in text:
             color = COLORS["error"]
         self.status_label.config(text=display_status(text), fg=color)
 

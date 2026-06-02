@@ -6,7 +6,7 @@ labels: bug
 assignees: ""
 ---
 
-## What happened?
+## What happened
 
 ## Expected behavior
 

@@ -313,11 +313,11 @@ class DistributedControlPlane:
 
     def _local_backfill_state(self, project, ticket):
         local_status = str(getattr(project, "status", "") or "").strip()
-        if "오류" in local_status:
+        if "Error" in local_status:
             return "failed", "failed"
-        if "중지" in local_status:
+        if "Stopped" in local_status:
             return "cancelled", "stopped"
-        if "완료" in local_status:
+        if "Done" in local_status:
             return "completed", "success"
         return "completed", "success"
 
@@ -642,7 +642,7 @@ class DistributedControlPlane:
                 },
                 ensure_ascii=False,
             )
-            finished_at = now if str(task.status).strip() and "실행" not in str(task.status) else None
+            finished_at = now if str(task.status).strip() and "Running" not in str(task.status) else None
             self.client.execute(
                 """
                 INSERT INTO task_runs (

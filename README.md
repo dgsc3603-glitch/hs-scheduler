@@ -131,7 +131,7 @@ Before publishing, confirm these files are not staged:
 - `scheduler_engine.db*`
 - `logs/`
 - `task_logs/`
-- `백업/`
+- `backup/`
 - `_*.png`
 
 The repository includes `.gitignore` rules for these paths.

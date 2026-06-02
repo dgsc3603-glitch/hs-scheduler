@@ -1,4 +1,4 @@
-﻿import threading
+import threading
 import queue
 import time
 import datetime
@@ -36,8 +36,8 @@ class UserStopException(Exception):
     pass
 
 class SchedulerCore:
-    # 조건 불만족으로 건너뜀 상태
-    TASK_STATUS_SKIPPED = "건너뜀(조건불만족)"
+    #          Skipped   
+    TASK_STATUS_SKIPPED = "SkippedCondition"
 
     def __init__(self, event_queue, credentials_manager, data_file):
         self.event_queue = event_queue
@@ -71,21 +71,21 @@ class SchedulerCore:
         self._last_live_log_state = {}
         
         # Status constants (mirrored from main app for consistency)
-        self.STATUS_WAITING = "대기중"
-        self.STATUS_RUNNING = "실행중"
-        self.STATUS_COMPLETED = "완료"
-        self.STATUS_ERROR = "오류 발생"
-        self.STATUS_STOPPED = "사용자중지"
-        self.STATUS_DEPENDENCY_WAIT = "대기중(종속성)"
+        self.STATUS_WAITING = "Waiting"
+        self.STATUS_RUNNING = "Running"
+        self.STATUS_COMPLETED = "Done"
+        self.STATUS_ERROR = "Error"
+        self.STATUS_STOPPED = "Stopped"
+        self.STATUS_DEPENDENCY_WAIT = "DependencyWait"
         
-        self.TASK_STATUS_WAITING = "대기중"
-        self.TASK_STATUS_RUNNING = "실행중"
-        self.TASK_STATUS_COMPLETED = "완료"
-        self.TASK_STATUS_ERROR = "오류"
-        self.TASK_STATUS_TIMEOUT = "시간초과"
-        self.TASK_STATUS_STOPPED = "중지"
-        self.TASK_STATUS_FINAL_FAIL = "최종실패"
-        self.TASK_STATUS_SYSTEM_ERROR = "시스템오류"
+        self.TASK_STATUS_WAITING = "Waiting"
+        self.TASK_STATUS_RUNNING = "Running"
+        self.TASK_STATUS_COMPLETED = "Done"
+        self.TASK_STATUS_ERROR = "Error"
+        self.TASK_STATUS_TIMEOUT = "Timeout"
+        self.TASK_STATUS_STOPPED = "Stopped"
+        self.TASK_STATUS_FINAL_FAIL = "FinalFailed"
+        self.TASK_STATUS_SYSTEM_ERROR = "SystemError"
         
         # Statuses that should not be treated as failures during recovery.
         self._NON_FAILURE_STATUSES = {
@@ -160,11 +160,11 @@ class SchedulerCore:
             data, diagnostics = validate_scheduler_payload(raw_data)
             self._write_data_validation_report(diagnostics)
             if diagnostics["errors"]:
-                self.log(f"데이터 검증 오류 {len(diagnostics['errors'])}건 감지")
+                self.log(f"       Error {len(diagnostics['errors'])}    ")
             if diagnostics["warnings"] or diagnostics["repairs"]:
                 self.log(
-                    "데이터 검증 경고/복구 "
-                    f"{len(diagnostics['warnings']) + len(diagnostics['repairs'])}건 감지"
+                    "         /   "
+                    f"{len(diagnostics['warnings']) + len(diagnostics['repairs'])}    "
                 )
             # Reconstruct Project objects
             self.projects = []
@@ -177,9 +177,9 @@ class SchedulerCore:
             self._load_session_state()
             self._reconcile_today_trace_state()
             self.emit(SchedulerEvent.PROJECT_REFRESH, None)
-            self.log("데이터 불러오기 완료")
+            self.log("         Done")
         except Exception as e:
-            self.log(f"데이터 로드 오류: {e}")
+            self.log(f"       Error: {e}")
 
     def _write_data_validation_report(self, diagnostics):
         report_path = os.path.join(self.log_dir, "data_validation_latest.json")
@@ -206,9 +206,9 @@ class SchedulerCore:
             with self.persistence_lock:
                 atomic_write_json(self.data_file, data, indent=4)
                 self._save_session_state()
-            self.log("설정 저장 완료")
+            self.log("      Done")
         except Exception as e:
-            self.log(f"설정 저장 실패: {e}")
+            self.log(f"      Failed: {e}")
 
     def _load_session_state(self):
         if not os.path.exists(self.session_state_file): return
@@ -227,29 +227,29 @@ class SchedulerCore:
                 if proj.name in projects_state:
                     ps = projects_state[proj.name]
                     with self.project_state_lock:
-                        loaded_status = ps.get("status", "대기중")
+                        loaded_status = ps.get("status", "Waiting")
                         today_ticket = self._get_today_schedule_ticket(proj, today)
                         saved_ticket = ps.get("last_consumed_ticket") or proj.last_consumed_ticket
                         if self._is_stale_daily_session_status(proj, loaded_status, saved_ticket, today_ticket):
                             self.log(
-                                f"[{proj.name}] 오래된 세션 상태({loaded_status})가 오늘 예약을 막지 않도록 대기 상태로 복구합니다."
+                                f"[{proj.name}]          ({loaded_status})                Waiting          ."
                             )
                             loaded_status = self.STATUS_WAITING
                             ps["completed_tasks"] = 0
                             ps["total_tasks"] = len(proj.tasks)
                             ps["tasks"] = {}
                         
-                        # 2차 방어: daily 프로젝트의 목표 시간이 아직 지나지 않았다면 완료 상태를 대기중으로 되돌림
-                        if proj.schedule_type == "daily" and loaded_status in ["완료", "실행 완료"]:
+                        # 2    : daily                          Done     Waiting      
+                        if proj.schedule_type == "daily" and loaded_status in ["Done", "Done"]:
                             try:
                                 target_time = datetime.datetime.strptime(proj.run_time, "%H:%M").time()
                                 now_time = datetime.datetime.now().time()
                                 if target_time > now_time:
-                                    self.log(f"[{proj.name}] 세션 초기화 방어: 설정 시간({proj.run_time})이 아직 지나지 않아 대기 상태로 강제 초기화합니다.")
-                                    loaded_status = "대기중"
+                                    self.log(f"[{proj.name}]          :      ({proj.run_time})            Waiting              .")
+                                    loaded_status = "Waiting"
                                     ps["completed_tasks"] = 0
                                     
-                                    # 하위 task 상태를 무시하기 위해 tasks 딕셔너리를 비움
+                                    #    task             tasks         
                                     if "tasks" in ps:
                                         ps["tasks"] = {}
                             except Exception as e:
@@ -268,7 +268,7 @@ class SchedulerCore:
                                 ts = tasks_state[task.filename]
                                 task.status = ts.get("status", "Unknown")
 
-            self.log(f"오늘 날짜 ({today}) 세션 상태 복원 완료")
+            self.log(f"      ({today})          Done")
         except Exception as e:
             self.log(f"Session state load error: {e}")
 
@@ -292,9 +292,9 @@ class SchedulerCore:
             self.STATUS_COMPLETED,
             self.STATUS_ERROR,
             self.STATUS_STOPPED,
-            "실행 완료",
-            "오류 발생",
-            "사용자중지",
+            "Done",
+            "Error",
+            "Stopped",
         }
         return loaded_status in stale_statuses
 
@@ -373,12 +373,12 @@ class SchedulerCore:
             self.STATUS_ERROR: self.STATUS_ERROR,
             self.STATUS_STOPPED: self.STATUS_STOPPED,
             self.STATUS_DEPENDENCY_WAIT: self.STATUS_DEPENDENCY_WAIT,
-            "실행 완료": self.STATUS_COMPLETED,
-            "사용자중지": self.STATUS_STOPPED,
+            "Done": self.STATUS_COMPLETED,
+            "Stopped": self.STATUS_STOPPED,
         }
         if status in known:
             return known[status]
-        if "쨷" in status or "중지" in status:
+        if "Stopped" in status:
             return self.STATUS_STOPPED
         return None
 
@@ -454,37 +454,37 @@ class SchedulerCore:
                 time.sleep(5)
 
     def _heal_ghost_running_projects(self):
-        """C-7: STATUS_RUNNING?댁?留??ㅼ젣 ?꾨줈?몄뒪媛 ?녿뒗 ?좊졊 ?곹깭 ?먯? 諛?蹂듦뎄"""
+        """C-7: STATUS_RUNNING  Failed                         """
         try:
             with self.active_processes_lock:
                 active_proj_names = {p_name for _, p_name, _ in self.active_processes}
             
             for proj in self.projects:
                 if proj.status == self.STATUS_RUNNING and proj.name not in active_proj_names:
-                    # 실행 상태 감지
-                    self.log(f"[{proj.name}] 실행 상태 감지! 복구 시작...")
+                    #         
+                    self.log(f"[{proj.name}]         !      ...")
                     with self.project_state_lock:
                         proj.status = self.STATUS_ERROR
                         for task in proj.tasks:
                             if task.status.startswith(self.TASK_STATUS_RUNNING):
                                 task.status = self.TASK_STATUS_SYSTEM_ERROR
                     
-                    # C-5: Lock 완전 해제
+                    # C-5: Lock      
                     try:
                         if proj.execution_lock.locked():
                             proj.execution_lock.release()
                     except RuntimeError:
                         pass
                     
-                    # FIX: semaphore 반환 처리
+                    # FIX: semaphore      
                     try:
                         self.semaphore.release()
-                        self.log(f"[{proj.name}] semaphore 반환 완료")
+                        self.log(f"[{proj.name}] semaphore    Done")
                     except ValueError:
                         pass
                     
                     proj.calculate_next_run()
-                    self.log(f"[{proj.name}] 실행 복구 완료 -> next_run: {proj.next_run}")
+                    self.log(f"[{proj.name}]       Done -> next_run: {proj.next_run}")
                     self.emit(SchedulerEvent.PROJECT_REFRESH, None)
                     self.emit(SchedulerEvent.TASK_REFRESH, None)
                     self.save_data()
@@ -588,7 +588,7 @@ class SchedulerCore:
             status=proj.status,
             next_run=proj.next_run,
         )
-        self.log(f"[{proj.name}] stale execution_lock 복구 ({reason})")
+        self.log(f"[{proj.name}] stale execution_lock    ({reason})")
         self.save_data()
         self.emit(SchedulerEvent.PROJECT_REFRESH, None)
         self.emit(SchedulerEvent.TASK_REFRESH, None)
@@ -735,33 +735,33 @@ class SchedulerCore:
 
     def run_project(self, proj, only_checked=False, trigger_source="scheduled"):
         if not proj.execution_lock.acquire(blocking=False):
-            self.log(f"[{proj.name}] execution_lock 획득 실패 (이미 실행중)")
+            self.log(f"[{proj.name}] execution_lock    Failed (   Running)")
             self._trace_schedule_event(proj.name, "PROJECT_START_SKIPPED", trigger_source=trigger_source, reason="execution_lock_busy")
             return False
             
         if not self.semaphore.acquire(blocking=False):
             proj.execution_lock.release()
             if trigger_source != "scheduled":
-                self.log(f"[{proj.name}] 수동 실행 시작 실패 - 동시 실행 한도 초과")
+                self.log(f"[{proj.name}]          Failed -            ")
                 self._trace_schedule_event(proj.name, "PROJECT_START_SKIPPED", trigger_source=trigger_source, reason="semaphore_full")
                 return False
-            self.log(f"[{proj.name}] 동시 실행 한도 초과, 대기열 추가")
+            self.log(f"[{proj.name}]            , Waiting    ")
             self._trace_schedule_event(proj.name, "PROJECT_QUEUED", trigger_source=trigger_source, reason="semaphore_full", next_run=proj.next_run)
             if proj.name not in self._pending_set:
                 self._pending_set.add(proj.name)
                 self.pending_queue.put((proj, datetime.datetime.now(), only_checked, trigger_source))
             return False
 
-        # FIX: pending_queue 경로에서도 last_consumed_ticket 갱신
+        # FIX: pending_queue       last_consumed_ticket   
         if trigger_source == "scheduled" and proj.last_consumed_ticket != proj.next_run:
             proj.last_consumed_ticket = proj.next_run
-            self.log(f"[{proj.name}] 티켓 소비 (pending 경로): {proj.next_run}")
+            self.log(f"[{proj.name}]       (pending   ): {proj.next_run}")
 
-        # pending_set 정리
+        # pending_set   
         self._pending_set.discard(proj.name)
         self.save_data()
 
-        self.log(f"[{proj.name}] 작업 시작 준비 완료 (next_run: {proj.next_run})")
+        self.log(f"[{proj.name}]          Done (next_run: {proj.next_run})")
         return self._launch_project_with_acquired_slot(proj, only_checked, trigger_source)
 
     def _execute_wrapper(self, proj, only_checked, trigger_source, run_id):
@@ -779,19 +779,19 @@ class SchedulerCore:
             self._check_all_projects_completed()
 
     def _process_pending(self):
-        """대기열에서 가능한 만큼 연속 처리"""
+        """Waiting                """
         processed = 0
         while not self.pending_queue.empty():
             try:
                 proj, _, only_checked, trigger_source = self.pending_queue.get_nowait()
                 self._pending_set.discard(proj.name)
                 if not self.run_project(proj, only_checked=only_checked, trigger_source=trigger_source):
-                    break  # semaphore 부족 시 중단
+                    break  # semaphore        
                 processed += 1
             except queue.Empty:
                 break
         if processed > 0:
-            self.log(f"대기열에서 {processed}개 프로젝트 처리")
+            self.log(f"Waiting    {processed}         ")
 
     def stop_task(self, proj_name, task_id):
         with self._requested_task_stops_lock:
@@ -808,10 +808,10 @@ class SchedulerCore:
         return False
 
     def stop_project(self, proj_name):
-        """프로젝트 중지 - 프로세스 종료 + stop_requested 플래그"""
-        self.log(f"⏹ [{proj_name}] 강제 중지 시도 중...")
+        """     Stopped -         + stop_requested    """
+        self.log(f"  [{proj_name}]    Stopped     ...")
         
-        # stop_requested ?뚮옒洹??ㅼ젙 (??Task ?쒖옉 諛⑹?)
+        # stop_requested    Failed   (FailedTask      )
         for proj in self.projects:
             if proj.name == proj_name:
                 proj.stop_requested = True
@@ -827,7 +827,7 @@ class SchedulerCore:
             self._terminate_process_safely(proc, f"task:{t_id}")
             # The _run_single_script thread will handle removal from active_processes
         
-        self.log(f"[{proj_name}] 모든 관련 프로세스 종료 신호 전송 완료")
+        self.log(f"[{proj_name}]                     Done")
 
     def _terminate_process_safely(self, process, task_name="Unknown"):
         try:
@@ -837,7 +837,7 @@ class SchedulerCore:
             process.terminate()
             try:
                 process.wait(timeout=5)
-                self.log(f"  ↳ {task_name} 프로세스 정상 종료")
+                self.log(f"    {task_name}           ")
                 return
             except subprocess.TimeoutExpired:
                 pass
@@ -847,9 +847,9 @@ class SchedulerCore:
             else:
                 process.kill()
                 process.wait(timeout=5)
-                self.log(f"  ↳ {task_name} 프로세스 강제 종료")
+                self.log(f"    {task_name}           ")
         except Exception as e:
-            self.log(f"  ↳ {task_name} 프로세스 종료 실패: {e}")
+            self.log(f"    {task_name}         Failed: {e}")
 
     def _terminate_windows_process_tree(self, process, task_name):
         try:
@@ -868,13 +868,13 @@ class SchedulerCore:
                 process.wait(timeout=5)
 
             if result.returncode == 0:
-                self.log(f"  ↳ {task_name} 프로세스 트리 강제 종료")
+                self.log(f"    {task_name}              ")
             else:
-                self.log(f"  ↳ {task_name} 프로세스 강제 종료")
+                self.log(f"    {task_name}           ")
         except Exception:
             process.kill()
             process.wait(timeout=5)
-            self.log(f"  ↳ {task_name} 프로세스 강제 종료")
+            self.log(f"    {task_name}           ")
 
     def _check_task_condition(self, task, proj_name, proj_dict):
         if not task.condition.get('enabled', False):
@@ -885,10 +885,10 @@ class SchedulerCore:
         
         if cond_type == 'file_exists':
             if os.path.exists(cond_value):
-                self.log(f"[{proj_name}] '{task.filename}' 조건 충족: 파일 존재 ({cond_value})")
+                self.log(f"[{proj_name}] '{task.filename}'      :       ({cond_value})")
                 return True
             else:
-                self.log(f"[{proj_name}] '{task.filename}' 건너뜀: 파일 없음 ({cond_value})")
+                self.log(f"[{proj_name}] '{task.filename}' Skipped:       ({cond_value})")
                 with self.project_state_lock:
                     task.status = self.TASK_STATUS_SKIPPED
                 return False
@@ -899,17 +899,17 @@ class SchedulerCore:
                 same_step_tasks = [t for t in proj.tasks if t.step == task.step and t.order < task.order]
                 all_success = all(t.status == self.TASK_STATUS_COMPLETED for t in same_step_tasks)
                 if all_success:
-                    self.log(f"[{proj_name}] '{task.filename}' 조건 충족: 이전 작업 모두 성공")
+                    self.log(f"[{proj_name}] '{task.filename}'      :            ")
                     return True
                 else:
-                    self.log(f"[{proj_name}] '{task.filename}' 건너뜀: 이전 작업 실패")
+                    self.log(f"[{proj_name}] '{task.filename}' Skipped:       Failed")
             with self.project_state_lock:
                 task.status = self.TASK_STATUS_SKIPPED
             return False
         return True
 
     def _safe_path_component(self, value, fallback="item"):
-        cleaned = re.sub(r'[<>:"/\\|?*\x00-\x1f]', "_", str(value or "")).strip(" .")
+        cleaned = re.sub(r'[<>:"/\\|*\x00-\x1f]', "_", str(value or "")).strip(" .")
         return cleaned or fallback
 
     def _run_single_script(self, task, proj_name, proj_dict):
@@ -921,7 +921,7 @@ class SchedulerCore:
         for attempt in range(1, max_attempts + 1):
             task_start_time = time.time()
             if attempt > 1:
-                self.log(f"[{proj_name}] ↻ {task.filename} 재시도 중 ({attempt}/{max_attempts})...")
+                self.log(f"[{proj_name}]   {task.filename}       ({attempt}/{max_attempts})...")
                 time.sleep(2)
 
             with self.project_state_lock:
@@ -1026,7 +1026,7 @@ class SchedulerCore:
                             read_lines(t_err_read, "stderr")
                             
                             if poll is not None:
-                                # ?꾨줈?몄뒪 醫낅즺 ??留덉?留?異쒕젰 ?쎄린
+                                #          Failed         
                                 read_lines(t_out_read, "stdout")
                                 read_lines(t_err_read, "stderr")
                                 break
@@ -1042,11 +1042,11 @@ class SchedulerCore:
                         t_out_read.close()
                         t_err_read.close()
                 
-                # C-8: active_processes in-place ?섏젙
+                # C-8: active_processes in-place   
                 with self.active_processes_lock:
                     self.active_processes = [p for p in self.active_processes if p[0] is not process]
                 
-                # C-1: ?뚯씪?믫뙆??蹂듭궗濡?理쒖쥌 濡쒓렇 ?앹꽦 (硫붾え由?臾댁궗??
+                # C-1:     Failed               (       Failed
                 try:
                     with open(log_path, "w", encoding="utf-8") as log_f:
                         log_f.write("[STDOUT]\n")
@@ -1063,7 +1063,7 @@ class SchedulerCore:
                 if process.returncode == 0:
                     with self.project_state_lock:
                         task.status = self.TASK_STATUS_COMPLETED
-                    self.log(f"[{proj_name}] ✓ {task.filename} 성공")
+                    self.log(f"[{proj_name}]   {task.filename}   ")
                     
                     proj = proj_dict.get(proj_name)
                     if proj:
@@ -1083,7 +1083,7 @@ class SchedulerCore:
                         with self.project_state_lock:
                             task.status = self.TASK_STATUS_STOPPED
                     else:
-                        self.emit(SchedulerEvent.TELEGRAM, f"❌ 작업 오류: {task.filename} in {proj_name}")
+                        self.emit(SchedulerEvent.TELEGRAM, f"     Error: {task.filename} in {proj_name}")
                         with self.project_state_lock:
                             task.status = self.TASK_STATUS_ERROR
                     if attempt < max_attempts: continue
@@ -1091,7 +1091,7 @@ class SchedulerCore:
             except TimeoutError:
                 with self.project_state_lock:
                     task.status = self.TASK_STATUS_TIMEOUT
-                self.log(f"[{proj_name}] ⚠ {task.filename} 시간 초과")
+                self.log(f"[{proj_name}]   {task.filename}      ")
             except Exception as e:
                 with self.project_state_lock:
                     task.status = self.TASK_STATUS_SYSTEM_ERROR
@@ -1100,7 +1100,7 @@ class SchedulerCore:
                 if process is not None:
                     with self.active_processes_lock:
                         self.active_processes = [p for p in self.active_processes if p[0] is not process]
-                # C-3: temp 파일 완전 삭제 (예외 시에도 반드시 실행)
+                # C-3: temp          (             )
                 for tmp_f in [temp_stdout, temp_stderr]:
                     try:
                         if os.path.exists(tmp_f): os.remove(tmp_f)
@@ -1123,13 +1123,13 @@ class SchedulerCore:
             with self.project_state_lock:
                 proj.status = self.STATUS_RUNNING
                 proj.stop_requested = False
-            self.emit(SchedulerEvent.STATUS_UPDATE, f"실행중 {proj.name}")
+            self.emit(SchedulerEvent.STATUS_UPDATE, f"Running {proj.name}")
             self.emit(SchedulerEvent.PROJECT_REFRESH, None)
             
-            self.log(f"▶ 프로젝트 시작: {proj.name}")
+            self.log(f"         : {proj.name}")
             
-            source_label = "자동 예약" if trigger_source == "scheduled" else "수동 실행"
-            self.log(f"[{proj.name}] 실행 출처: {source_label}")
+            source_label = "     " if trigger_source == "scheduled" else "     "
+            self.log(f"[{proj.name}]      : {source_label}")
             steps = proj.get_tasks_by_step()
             proj_dict = {proj.name: proj} # Simplified for internal call
             
@@ -1142,14 +1142,14 @@ class SchedulerCore:
                     tasks = [t for t in tasks if t.checked]
                     if not tasks: continue
 
-                self.log(f"  ↳ Step {step_num} 진행 ({len(tasks)}개, {proj.step_mode})")
+                self.log(f"    Step {step_num}    ({len(tasks)} , {proj.step_mode})")
                 
                 if proj.step_mode == "sequential":
                     for task in tasks:
                         with self.project_state_lock:
                             if proj.stop_requested: raise UserStopException()
                         self._run_single_script(task, proj.name, proj_dict)
-                        # Fix 6: 嫄대꼫? ?곹깭???뺤긽 吏꾪뻾 ?덉슜
+                        # Fix 6:        Stopped         
                         if task.status not in self._NON_FAILURE_STATUSES:
                             break # Step failure
                 else:
@@ -1163,7 +1163,7 @@ class SchedulerCore:
                     for t in threads: t.join()
                     
                 self.emit(SchedulerEvent.TASK_REFRESH, None)
-                # Fix 6: 嫄대꼫? ?곹깭???뺤긽 吏꾪뻾 ?덉슜
+                # Fix 6:        Stopped         
                 if any(t.status not in self._NON_FAILURE_STATUSES for t in tasks):
                     break
 
@@ -1184,14 +1184,14 @@ class SchedulerCore:
                     proj.status = self.STATUS_COMPLETED
             
             proj.calculate_next_run()
-            self.log(f"[{proj.name}] 종료 처리 기록: {trigger_source}")
-            self.log(f"■ 프로젝트 종료: {proj.name} ({proj.status})")
+            self.log(f"[{proj.name}]         : {trigger_source}")
+            self.log(f"         : {proj.name} ({proj.status})")
             self.emit(SchedulerEvent.PROJECT_REFRESH, None)
-            self.emit(SchedulerEvent.NOTIFICATION, f"프로젝트 '{proj.name}' 종료")
+            self.emit(SchedulerEvent.NOTIFICATION, f"     '{proj.name}'   ")
             
             # Send project completion notification.
-            status_icon = "✅" if proj.status == self.STATUS_COMPLETED else "❌" if proj.status == self.STATUS_ERROR else "⚠️"
-            tg_msg = f"{status_icon} [{proj.name}] {proj.status}\n아래 {proj.last_run}"
+            status_icon = " " if proj.status == self.STATUS_COMPLETED else " " if proj.status == self.STATUS_ERROR else "  "
+            tg_msg = f"{status_icon} [{proj.name}] {proj.status}\n   {proj.last_run}"
             self.emit(SchedulerEvent.TELEGRAM, tg_msg)
             
             self.save_data()
@@ -1208,14 +1208,14 @@ class SchedulerCore:
                 proj.status = self.STATUS_STOPPED
                 for task in proj.tasks:
                     if task.status in [self.TASK_STATUS_WAITING, self.TASK_STATUS_RUNNING] or task.status.startswith(self.TASK_STATUS_RUNNING):
-                        task.status = "중지"
+                        task.status = "Stopped"
                 proj.calculate_next_run()
             self.save_data()
             self.emit(SchedulerEvent.PROJECT_REFRESH, None)
             self.emit(SchedulerEvent.TASK_REFRESH, None)
         except Exception as e:
-            # C-4: 예외 발생 시 상태를 오류로 전환 (실행중 복구 방지)
-            self.log(f"⚠ 오류: {e}")
+            # C-4:             Error     (Running      )
+            self.log(f"  Error: {e}")
             with self.project_state_lock:
                 proj.status = self.STATUS_ERROR
                 for task in proj.tasks:
@@ -1226,10 +1226,10 @@ class SchedulerCore:
         finally:
             with self.project_state_lock:
                 proj.stop_requested = False
-                # C-4: 최종 안전망 - 아직 RUNNING이면 강제 오류 전환
+                # C-4:        -    RUNNING      Error   
                 if proj.status == self.STATUS_RUNNING:
                     proj.status = self.STATUS_ERROR
-                    self.log(f"[{proj.name}] 상태가 RUNNING인 채 남아 강제 오류 전환")
+                    self.log(f"[{proj.name}]     RUNNING          Error   ")
 
             self._trace_schedule_event(
                 proj.name,
@@ -1252,7 +1252,7 @@ class SchedulerCore:
                     self._log_schedule_diag_once(
                         proj,
                         diag_key,
-                        f"?㈉ [{proj.name}] ?먮룞 ?덉빟 誘몄떎??- reason={block_reason}, "
+                        f"  [{proj.name}]          Failed- reason={block_reason}, "
                         f"next_run={proj.next_run}, last_ticket={proj.last_consumed_ticket}"
                     )
                 return False
@@ -1265,7 +1265,7 @@ class SchedulerCore:
                     reason="execution_lock_busy",
                     next_run=proj.next_run
                 )
-                self.log(f"⚠️ [{proj.name}] 스텝 소비 실패: execution_lock 사용중")
+                self.log(f"   [{proj.name}]       Failed: execution_lock    ")
                 return False
             
             if not self.semaphore.acquire(blocking=False):
@@ -1278,7 +1278,7 @@ class SchedulerCore:
                     reason="semaphore_full",
                     next_run=proj.next_run
                 )
-                self.log(f"[{proj.name}] 티켓 소비 실패: semaphore 부족으로 대기열로 복귀")
+                self.log(f"[{proj.name}]       Failed: semaphore      Waiting     ")
                 if proj.name not in self._pending_set:
                     self._pending_set.add(proj.name)
                     self.pending_queue.put((proj, current_time, False, "scheduled"))
@@ -1289,12 +1289,12 @@ class SchedulerCore:
             self._pending_set.discard(proj.name)
             self.save_data()
 
-            self.log(f"[{proj.name}] 티켓 소비 완료: {proj.next_run} (실행ID: {proj.execution_id})")
+            self.log(f"[{proj.name}]       Done: {proj.next_run} (  ID: {proj.execution_id})")
             self._trace_schedule_event(proj.name, "SCHEDULE_TICKET_CONSUMED", next_run=proj.next_run, execution_id=proj.execution_id)
             return self._launch_project_with_acquired_slot(proj, False, "scheduled")
-    # 프로그램/프로젝트 수동 실행/중지 메서드
+    #     /          /Stopped    
     def run_project_manual(self, proj, only_checked=False):
-        """메인에서 프로젝트를 수동으로 즉시 실행"""
+        """                     """
         if proj.status == self.STATUS_RUNNING:
             self._trace_schedule_event(
                 proj.name,
@@ -1331,9 +1331,9 @@ class SchedulerCore:
             only_checked=only_checked,
             execution_id=proj.execution_id
         )
-        # Fix 5: only_checked=False (수동 실행은 전체 task 실행)
+        # Fix 5: only_checked=False (          task   )
         return self._launch_project_with_acquired_slot(proj, only_checked, "manual")
-        self.log(f"[{proj.name}] 수동 실행 시작 (수동 요청)")
+        self.log(f"[{proj.name}]          (     )")
         return True
     
     # The old duplicate stop_project implementation was removed because it did not
@@ -1368,13 +1368,13 @@ class SchedulerCore:
             with self.persistence_lock:
                 atomic_write_json(self.history_file, history, indent=4)
         except Exception as e:
-            self.log(f"히스토리 저장 오류: {e}")
+            self.log(f"        Error: {e}")
 
     def _reset_daily_state(self):
         self._last_schedule_diag.clear()
         self._trace_schedule_event("SYSTEM", "DAILY_RESET")
-        """일일 초기화 - 모든 프로젝트/작업 상태 리셋"""
-        self.log("📅 새로운 날짜가 시작되었습니다. 상태를 초기화합니다.")
+        """       -        /        """
+        self.log("                 .           .")
         
         with self.project_state_lock:
             for proj in self.projects:
@@ -1426,4 +1426,4 @@ class SchedulerCore:
             self.last_all_done_date = today_str
             msg = f"All projects completed for {today_str}.\n\nEvery enabled project has finished running."
             self.emit(SchedulerEvent.TELEGRAM, msg)
-            self.log("📣 전체 프로젝트 종료 알림 전송 완료")
+            self.log("                   Done")

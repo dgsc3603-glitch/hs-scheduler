@@ -27,7 +27,6 @@ IGNORED_DIR_NAMES = {
     "tmp",
     "temp",
     "backup",
-    "백업",
 }
 
 IGNORED_SUFFIXES = {

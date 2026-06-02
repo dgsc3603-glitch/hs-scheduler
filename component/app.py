@@ -27,7 +27,7 @@ from component.utils import (
 class HSSchedulerApp:
     def __init__(self, root, base_dir=None):
         self.root = root
-        self.event_queue = queue.Queue(maxsize=5000)  # C-2: 메모리 폭증 방지
+        self.event_queue = queue.Queue(maxsize=5000)  # Limit queued UI events.
         self.engine_client = LocalEngineClient()
         self.engine_process = None
         self.engine_process_owned = False
@@ -50,7 +50,7 @@ class HSSchedulerApp:
         self._distributed_settings_dialog = None
         self._last_engine_event_id = 0
         
-        # Paths - 외부에서 base_dir 지정 가능 (런처에서 루트 폴더 전달)
+        # Paths: launcher passes the repository root as base_dir.
         if base_dir is None:
             base_dir = os.path.dirname(os.path.abspath(__file__))
         self.base_dir = base_dir
@@ -66,7 +66,7 @@ class HSSchedulerApp:
         # UI
         self.ui = MainWindow(self.root, self)
         
-        # 창 닫기 → 바로 종료 (트레이 아이콘 없음)
+        # Close the app directly without minimizing to tray.
         self.root.protocol("WM_DELETE_WINDOW", self.clean_quit)
 
         # Startup
@@ -80,9 +80,9 @@ class HSSchedulerApp:
         self._refresh_engine_projects(force=True)
         self._refresh_distributed_status(force=True)
         self.refresh_project_list()
-        self.core.log("시스템 초기화 완료.")
+        self.core.log("System initialization complete.")
         
-        # 텔레그램 봇 시작
+        # Start Telegram bot only when the embedded core is active.
         if not self.engine_mode:
             self.telegram_bot = SchedulerTelegramBot(
                 self.core, 
@@ -166,7 +166,7 @@ class HSSchedulerApp:
         if self._engine_health_matches_base(health):
             return True
         self._log_engine_bridge_issue(
-            "엔진 포트가 다른 작업 폴더에서 사용 중입니다. 현재 폴더는 내장 코어로 실행합니다."
+            "Engine port is already used by another working directory. Running with the embedded core for this folder."
         )
         return False
 
@@ -216,7 +216,7 @@ class HSSchedulerApp:
     def delete_project(self):
         idx = self.ui.project_panel.get_selected()
         if idx is None: return
-        if not messagebox.askyesno("Confirm", "Delete the selected project?"): return
+        if not messagebox.askyesno("Confirm", "Delete the selected project"): return
         project_name = self.projects[idx].name
         self.core.remove_project(idx)
         self.engine_tasks_cache.pop(project_name, None)
@@ -248,7 +248,7 @@ class HSSchedulerApp:
                     return
             else:
                 self.core.stop_project(proj.name)
-            self.core.log(f"⏹ [{proj.name}] 중지 요청됨")
+            self.core.log(f"  [{proj.name}] Stopped    ")
 
     def run_project_now(self):
         idx = self.ui.project_panel.get_selected()
@@ -263,7 +263,7 @@ class HSSchedulerApp:
         self.refresh_task_list()
 
     def edit_project(self, event=None):
-        """H-3: 프로젝트 편집 다이얼로그"""
+        """H-3:              """
         idx = self.ui.project_panel.get_selected()
         if idx is None: return
         proj = self.projects[idx]
@@ -274,28 +274,28 @@ class HSSchedulerApp:
         dialog.transient(self.root)
         dialog.grab_set()
         
-        # 프로젝트명
+        #      
         ttk.Label(dialog, text="Project name:").pack(anchor="w", padx=15, pady=(15,2))
         name_var = tk.StringVar(value=proj.name)
         ttk.Entry(dialog, textvariable=name_var, width=40).pack(padx=15, fill="x")
         
-        # 실행 시간
+        #      
         ttk.Label(dialog, text="Run time (HH:MM):").pack(anchor="w", padx=15, pady=(10,2))
         time_var = tk.StringVar(value=proj.run_time)
         ttk.Entry(dialog, textvariable=time_var, width=40).pack(padx=15, fill="x")
         
-        # 스케줄 타입
+        #       
         ttk.Label(dialog, text="Schedule type:").pack(anchor="w", padx=15, pady=(10,2))
         type_var = tk.StringVar(value=proj.schedule_type)
         type_combo = ttk.Combobox(dialog, textvariable=type_var, values=["daily", "weekly", "interval", "onetime"], state="readonly", width=38)
         type_combo.pack(padx=15, fill="x")
         
-        # 스케줄 값
+        #      
         ttk.Label(dialog, text="Schedule value (weekday/interval/date):").pack(anchor="w", padx=15, pady=(10,2))
         value_var = tk.StringVar(value=proj.schedule_value)
         ttk.Entry(dialog, textvariable=value_var, width=40).pack(padx=15, fill="x")
         
-        # Step 모드
+        # Step   
         ttk.Label(dialog, text="Step mode:").pack(anchor="w", padx=15, pady=(10,2))
         mode_var = tk.StringVar(value=proj.step_mode)
         mode_combo = ttk.Combobox(dialog, textvariable=mode_var, values=["parallel", "sequential"], state="readonly", width=38)
@@ -310,7 +310,7 @@ class HSSchedulerApp:
             proj.calculate_next_run()
             self.save_data()
             self.refresh_project_list()
-            self.core.log(f"✅ [{proj.name}] 프로젝트 설정 저장 완료")
+            self.core.log(f"  [{proj.name}]            Done")
             dialog.destroy()
         
         btn_frame = ttk.Frame(dialog)
@@ -332,19 +332,19 @@ class HSSchedulerApp:
         self.refresh_task_list()
 
     def on_drop_files(self, event):
-        """외부 파일 드래그앤드롭으로 작업 추가"""
+        """                    """
         idx = self.ui.project_panel.get_selected()
         if idx is None:
             messagebox.showwarning("No Project Selected", "Select a project first.")
             return
         
-        # tkinterdnd2의 드롭 데이터 파싱 (중괄호로 묶인 경로 처리)
+        # tkinterdnd2            (             )
         raw = event.data
         files = []
         if '{' in raw:
             import re
             files = re.findall(r'\{([^}]+)\}', raw)
-            # 중괄호 밖의 나머지도 처리
+            # Start Telegram bot only when the embedded core is active.     
             remaining = re.sub(r'\{[^}]+\}', '', raw).strip()
             if remaining:
                 files.extend(remaining.split())
@@ -363,7 +363,7 @@ class HSSchedulerApp:
         
         self.save_data()
         self.refresh_task_list()
-        self.core.log(f"📂 드래그앤드롭으로 {len(py_files)}개 파일 추가됨")
+        self.core.log(f"           {len(py_files)}        ")
 
     def delete_task_from_project(self):
         idx = self.ui.project_panel.get_selected()
@@ -382,7 +382,7 @@ class HSSchedulerApp:
             if task.task_id == target_task_id:
                 filename = task.filename
                 del proj.tasks[i]
-                self.core.log(f"[{proj.name}] 🗑️ 작업 '{filename}' 삭제 완료.")
+                self.core.log(f"[{proj.name}]       '{filename}'    Done.")
                 break
         self.save_data()
         self.refresh_task_list()
@@ -506,7 +506,7 @@ class HSSchedulerApp:
                 if project.name == selected_project_name:
                     idx = project_index
                     break
-        # Fix 8: 프로젝트 미선택 시 실행 중인 프로젝트 자동 표시
+        # Fix 8:                            
         if idx is None:
             for i, p in enumerate(self.projects):
                 if p.status == self.core.STATUS_RUNNING:
@@ -647,14 +647,14 @@ class HSSchedulerApp:
     def load_distributed_config(self):
         if self.engine_mode:
             if not self._engine_available_for_base(force=True) and not self._recover_engine_bridge(force_restart=True):
-                raise RuntimeError("엔진에 연결할 수 없습니다.")
+                raise RuntimeError("              .")
             return self.engine_client.distributed_config()
         return self._load_distributed_config_local()
 
     def save_distributed_config(self, document):
         if self.engine_mode:
             if not self._engine_available_for_base(force=True) and not self._recover_engine_bridge(force_restart=True):
-                raise RuntimeError("엔진에 연결할 수 없습니다.")
+                raise RuntimeError("              .")
             result = self.engine_client.update_distributed_config(document)
         else:
             config_path = self._distributed_config_path()
@@ -723,7 +723,7 @@ class HSSchedulerApp:
             return True
         except Exception as exc:
             try:
-                self.core.log(f"{action_label} 요청 실패: {exc}")
+                self.core.log(f"{action_label}    Failed: {exc}")
             except Exception:
                 pass
             return False
@@ -738,7 +738,7 @@ class HSSchedulerApp:
                 self._handle_engine_command_failure(action_label, message)
             except Exception as exc:
                 try:
-                    self.core.log(f"{action_label} 상태 확인 실패: {exc}")
+                    self.core.log(f"{action_label}       Failed: {exc}")
                 except Exception:
                     pass
 
@@ -750,7 +750,7 @@ class HSSchedulerApp:
 
     def _handle_engine_command_failure(self, action_label, message):
         try:
-            self.core.log(f"{action_label} 실패: {message}")
+            self.core.log(f"{action_label} Failed: {message}")
         except Exception:
             pass
 
@@ -769,25 +769,25 @@ class HSSchedulerApp:
                 trigger_source=trigger_source,
                 only_checked=only_checked,
             ),
-            "프로젝트 실행",
+            "       ",
         )
 
     def _submit_engine_stop_command(self, project_name):
         return self._submit_engine_command(
             lambda: self.engine_client.stop_project(project_name),
-            "프로젝트 중지",
+            "     Stopped",
         )
 
     def _submit_engine_stop_task_command(self, project_name, task_id):
         return self._submit_engine_command(
             lambda: self.engine_client.stop_task(project_name, task_id),
-            "작업 중지",
+            "   Stopped",
         )
 
     def _submit_engine_run_task_command(self, project_name, task_id):
         return self._submit_engine_command(
             lambda: self.engine_client.run_task(project_name, task_id),
-            "단일 작업 실행",
+            "        ",
         )
 
     def _ensure_engine_bridge(self):
@@ -922,7 +922,7 @@ class HSSchedulerApp:
 
     def send_telegram_alert(self, msg):
         def _send():
-            # 내장 봇이 있으면 봇으로 전송, 없으면 기존 유틸 사용
+            # Start Telegram bot only when the embedded core is active.       ,             
             if hasattr(self, 'telegram_bot') and self.telegram_bot.is_configured:
                 self.telegram_bot.send_alert(msg)
             else:
@@ -930,7 +930,7 @@ class HSSchedulerApp:
 
         threading.Thread(target=_send, daemon=True).start()
 
-    # H-4: 우클릭 컨텍스트 메뉴
+    # H-4:            
     def show_context_menu(self, event):
         item = self.ui.task_panel.tree.identify_row(event.y)
         if not item: return
@@ -961,7 +961,7 @@ class HSSchedulerApp:
             menu.grab_release()
 
     def _run_single_task_only(self, proj, task_obj):
-        """H-4: 단일 작업 단독 실행"""
+        """H-4:            """
         if self.engine_mode:
             submitted = self._submit_engine_run_task_command(proj.name, task_obj.task_id)
             if not submitted:
@@ -974,9 +974,9 @@ class HSSchedulerApp:
             args=(task_obj, proj.name, proj_dict), 
             daemon=True
         ).start()
-        self.core.log(f"▶ [{proj.name}] {task_obj.filename} 단독 실행 시작")
+        self.core.log(f"  [{proj.name}] {task_obj.filename}         ")
 
-    # H-6: 작업 더블클릭 설정 변경
+    # H-6:              
     def on_double_click_task(self, event):
         idx = self.ui.project_panel.get_selected()
         if idx is None: return
@@ -995,7 +995,7 @@ class HSSchedulerApp:
             self._edit_task_dialog(proj, task_obj)
 
     def _edit_task_dialog(self, proj, task_obj):
-        """H-6: 작업 설정 변경 다이얼로그"""
+        """H-6:               """
         dialog = tk.Toplevel(self.root)
         dialog.title(f"Task Settings: {task_obj.filename}")
         dialog.geometry("420x350")
@@ -1030,7 +1030,7 @@ class HSSchedulerApp:
             except: pass
             self.save_data()
             self.refresh_task_list()
-            self.core.log(f"✅ [{proj.name}] {task_obj.filename} 설정 저장")
+            self.core.log(f"  [{proj.name}] {task_obj.filename}      ")
             dialog.destroy()
         
         btn_frame = ttk.Frame(dialog)
@@ -1050,41 +1050,41 @@ class HSSchedulerApp:
             self.ui.task_panel.tree.selection_set(item)
             self.ui.task_panel.tree.focus(item)
         if item and region in ("tree", "cell") and column in ("#0", "#1"):
-            # Step 그룹 노드가 아니면 체크 토글
+            # Step                 
             if not self.ui.task_panel.tree.item(item, "text").startswith("Step"):
                 self.root.after_idle(lambda target=item: self.toggle_task_check(specific_item=target))
                 return "break"
-        # 드래그 시작 아이템 기록
+        # Start Telegram bot only when the embedded core is active.    
         self._drag_start_item = item if item else None
     
-    # H-5: 드래그 앤 드롭 (작업 순서 재배치)
+    # H-5:          (         )
     def on_drag_motion(self, event):
         item = self.ui.task_panel.tree.identify_row(event.y)
         if item:
-            # Step 그룹 노드는 드래그 대상에서 제외
+            # Step                   
             if self.ui.task_panel.tree.item(item, "text").startswith("Step"):
                 return
             self.ui.task_panel.tree.selection_set(item)
     
     def on_drag_release(self, event):
-        """H-5: 드래그 완료 시 작업 순서 교환"""
+        """H-5:     Done           """
         idx = self.ui.project_panel.get_selected()
         if idx is None: return
         
-        # 드래그 시작 아이템 확인
+        # Start Telegram bot only when the embedded core is active.    
         src_item = getattr(self, '_drag_start_item', None)
         if not src_item: return
         
         target_item = self.ui.task_panel.tree.identify_row(event.y)
         if not target_item or target_item == src_item: return
         
-        # 아이템이 트리에 존재하는지 확인 (갱신 등으로 삭제되었을 수 있음)
+        # Start Telegram bot only when the embedded core is active.         (                 )
         if not self.ui.task_panel.tree.exists(src_item): 
             self._drag_start_item = None
             return
         if not self.ui.task_panel.tree.exists(target_item): return
         
-        # Step 그룹 노드는 이동 대상에서 제외
+        # Step                  
         if self.ui.task_panel.tree.item(src_item, "text").startswith("Step"): return
         if self.ui.task_panel.tree.item(target_item, "text").startswith("Step"): return
         
@@ -1107,7 +1107,7 @@ class HSSchedulerApp:
         self._drag_start_item = None
 
     def clean_quit(self):
-        """창 닫기 시 바로 종료 (트레이 아이콘 없음)"""
+        """             (          )"""
         try:
             if hasattr(self, 'telegram_bot'):
                 self.telegram_bot.stop()

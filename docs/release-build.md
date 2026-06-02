@@ -23,6 +23,12 @@ The packaged app is created under:
 dist/HS Scheduler/
 ```
 
+The build script also creates:
+
+```text
+dist/HS-Scheduler-Windows.zip
+```
+
 ## Included Files
 
 The PyInstaller spec includes:

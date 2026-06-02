@@ -25,7 +25,15 @@ echo Building Windows release package...
 %PYTHON_CMD% -m PyInstaller --clean --noconfirm "%~dp0hs_scheduler.spec"
 if errorlevel 1 exit /b 1
 
+set "RELEASE_ZIP=%~dp0dist\HS-Scheduler-Windows.zip"
+if exist "%RELEASE_ZIP%" del "%RELEASE_ZIP%"
+
+echo Creating release ZIP...
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Compress-Archive -Path '%~dp0dist\HS Scheduler\*' -DestinationPath '%RELEASE_ZIP%' -Force"
+if errorlevel 1 exit /b 1
+
 echo.
 echo Build complete:
 echo %~dp0dist\HS Scheduler
+echo %RELEASE_ZIP%
 pause

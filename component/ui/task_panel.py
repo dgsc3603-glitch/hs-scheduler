@@ -5,14 +5,14 @@ from component.ui.theme import COLORS, action_button, panel, panel_header, secti
 
 
 STATUS_LABELS = {
-    "대기중": "Waiting",
-    "실행중": "Running",
-    "완료": "Done",
-    "오류": "Error",
-    "시간초과": "Timeout",
-    "사용자중지": "Stopped",
-    "최종실패": "Final Failed",
-    "건너뜀": "Skipped",
+    "Waiting": "Waiting",
+    "Running": "Running",
+    "Done": "Done",
+    "Error": "Error",
+    "Timeout": "Timeout",
+    "Stopped": "Stopped",
+    "FinalFailed": "Final Failed",
+    "Skipped": "Skipped",
 }
 
 
@@ -100,7 +100,7 @@ class TaskPanel:
             step_node = self.tree.insert("", "end", text=f"Step {step_num}", values=("Group", "", "", ""), open=True)
             for task in tasks:
                 tag = "wait_even" if task_idx % 2 == 0 else "wait_odd"
-                icon = "○"
+                icon = " "
                 if task.status == status_constants["TASK_STATUS_COMPLETED"]:
                     tag = "success"
                     icon = "Done"
@@ -119,11 +119,11 @@ class TaskPanel:
                 elif task.status == status_constants["TASK_STATUS_FINAL_FAIL"]:
                     tag = "error"
                     icon = "Failed"
-                elif "건너뜀" in task.status:
+                elif "Skipped" in task.status:
                     tag = "stopped"
                     icon = "Skipped"
 
-                check_mark = "☑" if task.checked else "☐"
+                check_mark = " " if task.checked else " "
                 display_filename = f"{check_mark} {task.filename}"
                 item_id = self.tree.insert(
                     step_node,
